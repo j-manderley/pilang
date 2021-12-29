@@ -1,0 +1,21 @@
+[
+{
+  "directory": "/home/jcd/code/pilang",
+  "arguments": ["/usr/bin/ccache", "/usr/bin/gcc", "-c", "-m64", "-Iinc", "-o", "build/.objs/pilang/linux/x86_64/release/src/parser.c.o", "src/parser.c"],
+  "file": "src/parser.c"
+},
+{
+  "directory": "/home/jcd/code/pilang",
+  "arguments": ["/usr/bin/ccache", "/usr/bin/gcc", "-c", "-m64", "-Iinc", "-o", "build/.objs/pilang/linux/x86_64/release/src/lexer.c.o", "src/lexer.c"],
+  "file": "src/lexer.c"
+},
+{
+  "directory": "/home/jcd/code/pilang",
+  "arguments": ["/usr/bin/ccache", "/usr/bin/gcc", "-c", "-m64", "-Iinc", "-o", "build/.objs/pilang/linux/x86_64/release/src/utils.c.o", "src/utils.c"],
+  "file": "src/utils.c"
+},
+{
+  "directory": "/home/jcd/code/pilang",
+  "arguments": ["/usr/bin/ccache", "/usr/bin/gcc", "-c", "-m64", "-Iinc", "-o", "build/.objs/pilang/linux/x86_64/release/src/main.c.o", "src/main.c"],
+  "file": "src/main.c"
+}]
