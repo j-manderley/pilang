@@ -1,6 +1,6 @@
 {
     files = {
-        "src/utils.c"
+        "src/machine.c"
     },
     values = {
         "/usr/bin/gcc",
@@ -12,6 +12,6 @@
             "-DNDEBUG"
         }
     },
-    depfiles_gcc = "build/.objs/pilang/linux/x86_64/release/src/utils.c.o: src/utils.c  src/utils.h\
+    depfiles_gcc = "build/.objs/pilang/linux/x86_64/release/src/machine.c.o: src/machine.c  src/machine.h\
 "
 }

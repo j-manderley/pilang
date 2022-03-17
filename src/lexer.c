@@ -6,10 +6,6 @@
 
 #include "utils.h"
 
-PiKeywordDef PiKeywordDefs[] = {
-	// zzzzzzz
-};
-
 char *piTokenStrings[] = {
 	#define f(name) #name,
 	FOR_EACH_TOKEN(f)
@@ -29,6 +25,7 @@ void L_LexerDelete(PiLexer *lexer) {
 
 PiToken L_TokenNew(int type, int line, int col, char *str) {
 	PiToken tok;
+    // printf("Tok: %s at %d:%d; %s\n", piTokenStrings[type], line, col, str);
 
 	tok.type = type;
 	tok.line = line;
@@ -98,7 +95,10 @@ PiToken L_LexerReadNumber(PiLexer *lexer) {
 
 PiKeywordDef piKeywordDefs[] = {
 	{ "while", TOK_WHILE },
-	{ "def", TOK_DEF }
+	{ "glob", TOK_GLOB },
+	{ "return", TOK_RETURN },
+	{ "if", TOK_IF },
+	{ "else", TOK_ELSE }
 };
 
 #define PI_KEYWORD_DEFS_TOTAL (sizeof(piKeywordDefs) / sizeof(*piKeywordDefs))
@@ -125,6 +125,30 @@ PiToken L_LexerReadIdent(PiLexer *lexer) {
 	return L_TokenNew(TOK_IDENT, lexer->line, lexer->col, buf.ptr);
 }
 
+PiToken L_LexerReadStrLiteral(PiLexer *lexer) {
+    PiBuffer8 buf = U_BufferNew8(0);
+
+    while (1) {
+        char c = L_LexerReadChar(lexer);
+        if (c == '\\') {
+            c = L_LexerReadChar(lexer);
+            switch (c) {
+                case 'n':  U_BufferAppend8(&buf, '\n'); break;
+                case 't':  U_BufferAppend8(&buf, '\t'); break;
+                case '\\': U_BufferAppend8(&buf, '\\'); break;
+                default:
+                return L_TokenError(lexer, strdup("Unknow escape sequence"));
+            }
+        }
+        else if (c == '"') break;
+        else U_BufferAppend8(&buf, c);
+    }
+
+    U_BufferAppend8(&buf, '\0');
+    U_BufferFit8(&buf);
+    return L_LexerCreateToken(lexer, TOK_STRLITERAL, buf.ptr);
+}
+
 char hex2char(int h) {
 	return (h < 10) ? ('0' + h) : ('A' + h - 10);
 }
@@ -135,40 +159,61 @@ try_again:;
 
 	switch (c) {
 		// Separators
-		case ',':
+	case ',':
 		return L_LexerCreateToken(lexer, TOK_COMMA, NULL);
-		case '}':
+	case '}':
 		return L_LexerCreateToken(lexer, TOK_RBRACKET, NULL);
-		case '{':
+	case '{':
 		return L_LexerCreateToken(lexer, TOK_LBRACKET, NULL);
-		case '%':
+	case '%':
 		return L_LexerCreateToken(lexer, TOK_MOD, NULL);
-		case '(':
+	case '(':
 		return L_LexerCreateToken(lexer, TOK_LBRACE, NULL);
-		case ')':
+	case ')':
 		return L_LexerCreateToken(lexer, TOK_RBRACE, NULL);
-		case ';':
+	case ';':
 		return L_LexerCreateToken(lexer, TOK_SEMICOLON, NULL);
-		case '$':
+	case '#':
 		return L_LexerCreateToken(lexer, TOK_DEREF, NULL);
-		case '=':
-		return L_LexerCreateToken(lexer, TOK_EQUAL, NULL);
-		case '+':
+	case '=':
+		c = L_LexerReadChar(lexer);
+		if (c == '=') return L_LexerCreateToken(lexer, TOK_CMP_EQ, NULL);
+	    L_LexerStepBack(lexer);
+	    return L_LexerCreateToken(lexer, TOK_EQUAL, NULL);
+	case '+':
 		return L_LexerCreateToken(lexer, TOK_PLUS, NULL);
-		case '-':
+	case '-':
 		return L_LexerCreateToken(lexer, TOK_MINUS, NULL);
-		case '*':
+	case '*':
 		return L_LexerCreateToken(lexer, TOK_ASTERISK, NULL);
-		case '/':
+	case '/':
 		return L_LexerCreateToken(lexer, TOK_SLASH, NULL);
+	case '>':
+		c = L_LexerReadChar(lexer);
+		if (c == '=') return L_LexerCreateToken(lexer, TOK_CMP_GE, NULL);
+	    L_LexerStepBack(lexer);
+	    return L_LexerCreateToken(lexer, TOK_CMP_G, NULL);
+	case '<':
+		c = L_LexerReadChar(lexer);
+		if (c == '=') return L_LexerCreateToken(lexer, TOK_CMP_LE, NULL);
+	    L_LexerStepBack(lexer);
+	    return L_LexerCreateToken(lexer, TOK_CMP_L, NULL);
+	case '!':
+	    c = L_LexerReadChar(lexer);
+		if (c == '=') return L_LexerCreateToken(lexer, TOK_CMP_NE, NULL);
+	    L_LexerStepBack(lexer);
+	    return L_LexerCreateToken(lexer, TOK_NOT, NULL);
 
-		case ' ':
-		case '\t':
-		case '\n':
+	case ' ':
+	case '\t':
+	case '\n':
 			goto try_again;
 
-		case EOF:
+	case EOF:
 		return L_LexerCreateToken(lexer, TOK_EOF, NULL);
+
+	case '"':
+	   return L_LexerReadStrLiteral(lexer);
 	}
 
 	if (c == '_' || isalpha(c)) {

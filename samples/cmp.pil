@@ -1,0 +1,16 @@
+{
+    glob a, b;
+
+    print_str("Enter A and B\n> ");
+    a = read_int();
+    b = read_int();
+
+    println_str("> >= < <= == !=");
+    print_int(#a > #b);
+    print_int(#a >= #b);
+    print_int(#a < #b);
+    print_int(#a <= #b);
+    print_int(#a == #b);
+    println_int(#a != #b);
+    return;
+}

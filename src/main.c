@@ -1,15 +1,16 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 
 #include "lexer.h"
+#include "machine.h"
 #include "parser.h"
-#include <stdlib.h>
 
 int main(int argc, char **argv) {
-	if (argc != 2) {
+    if (argc != 2) {
 		printf("Specify filename\n");
-		return 0;
+	    return 0;
 	}
 
 	FILE *fptr = fopen(argv[1], "r");
@@ -18,15 +19,23 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 
-	PiLexer lexer;
-	L_LexerCreate(&lexer, fptr);
+    char *prog = malloc(512);
 
-	PiParser par;
-	P_ParserCreate(&par, &lexer);
+    PiLexer lex;
+    PiParser par;
+    PiMachine vm;
 
-	P_ParserGetStatement(&par);
+    L_LexerCreate(&lex, fptr);
+    P_ParserCreate(&par, &lex, prog);
+    P_ParserGetStatement(&par);
+    P_ParserRevisit(&par);
 
-	P_ParserDelete(&par);
-	L_LexerDelete(&lexer);
-	fclose(lexer.fptr);
+    VM_Create(&vm, 512, 512, prog);
+    VM_Execute(&vm, 0);
+
+    VM_Destroy(&vm);
+    P_ParserDelete(&par);
+    L_LexerDelete(&lex);
+
+    fclose(fptr);
 }

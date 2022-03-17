@@ -1,14 +1,17 @@
 {
+    files = {
+        "src/main.c"
+    },
     values = {
         "/usr/bin/gcc",
         {
             "-m64",
-            "-Iinc"
+            "-fvisibility=hidden",
+            "-O3",
+            "-Isrc",
+            "-DNDEBUG"
         }
     },
-    files = {
-        "src/main.c"
-    },
-    depfiles_gcc = "build/.objs/pilang/linux/x86_64/release/src/main.c.o: src/main.c  inc/lexer.h inc/parser.h inc/lexer.h\
+    depfiles_gcc = "build/.objs/pilang/linux/x86_64/release/src/main.c.o: src/main.c  src/lexer.h src/machine.h src/parser.h\
 "
 }

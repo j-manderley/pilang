@@ -1,0 +1,16 @@
+{
+    glob num, cnt;
+    cnt = 0;
+
+    print_str("Enter number: ");
+    num = read_int();
+
+    while (#num > 0) {
+        num = #num / 10;
+        cnt = #cnt + 1;
+    }
+
+    print_str("Length is ");
+    println_int(#cnt);
+    return;
+}
