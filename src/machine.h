@@ -16,7 +16,8 @@
 	f(OP_JMPZ) \
 	f(OP_ADD) f(OP_SUB) \
 	f(OP_MULT) f(OP_DIV) \
-	f(OP_MOD)
+	f(OP_MOD) \
+    f(OP_NEGATE)
 
 enum {
     #define f(name) name,

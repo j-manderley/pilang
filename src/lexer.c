@@ -52,7 +52,7 @@ char L_LexerReadChar(PiLexer *lexer) {
 
 	if (c == '\n') {
 		lexer->line++;
-		lexer->prev_len = lexer->col;
+	    lexer->prev_len = lexer->col;
 		lexer->col = 0;
 	}
 	else lexer->col++;
@@ -98,7 +98,8 @@ PiKeywordDef piKeywordDefs[] = {
 	{ "glob", TOK_GLOB },
 	{ "return", TOK_RETURN },
 	{ "if", TOK_IF },
-	{ "else", TOK_ELSE }
+	{ "else", TOK_ELSE },
+	{ "deref", TOK_DEREF },
 };
 
 #define PI_KEYWORD_DEFS_TOTAL (sizeof(piKeywordDefs) / sizeof(*piKeywordDefs))
@@ -174,7 +175,7 @@ try_again:;
 	case ';':
 		return L_LexerCreateToken(lexer, TOK_SEMICOLON, NULL);
 	case '#':
-		return L_LexerCreateToken(lexer, TOK_DEREF, NULL);
+		return L_LexerCreateToken(lexer, TOK_HASH, NULL);
 	case '=':
 		c = L_LexerReadChar(lexer);
 		if (c == '=') return L_LexerCreateToken(lexer, TOK_CMP_EQ, NULL);
@@ -187,6 +188,11 @@ try_again:;
 	case '*':
 		return L_LexerCreateToken(lexer, TOK_ASTERISK, NULL);
 	case '/':
+	    c = L_LexerReadChar(lexer);
+	    if (c == '/')
+	        do c = L_LexerReadChar(lexer); while (c != '\n');
+
+	    L_LexerStepBack(lexer);
 		return L_LexerCreateToken(lexer, TOK_SLASH, NULL);
 	case '>':
 		c = L_LexerReadChar(lexer);

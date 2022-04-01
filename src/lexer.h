@@ -32,7 +32,8 @@
     f(TOK_CMP_GE) \
     f(TOK_CMP_LE) \
     f(TOK_CMP_L) \
-    f(TOK_NOT)
+    f(TOK_NOT) \
+    f(TOK_HASH)
 
 enum {
     #define f(name) name,

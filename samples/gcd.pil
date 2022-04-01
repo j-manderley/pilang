@@ -5,14 +5,14 @@
 	a = read_int();
 	b = read_int();
 
-	while (#b) {
-		a = #a % #b;
+    while (b) {
+		a = a % b;
 
-		tmp = #a;
-		a = #b;
-		b = #tmp;
+		tmp = a;
+		a = b;
+		b = tmp;
 	}
 
-	println_int(#a);
+	println_int(a);
 	return;
 }

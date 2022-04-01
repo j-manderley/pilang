@@ -2,17 +2,17 @@
     glob bottle;
     bottle = 100;
 
-    while (#bottle > 2) {
-        print_int(#bottle);
+    while (bottle > 2) {
+        print_int(bottle);
         print_str(" bottles of beer on the wall, ");
-        print_int(#bottle);
+        print_int(bottle);
         println_str(" bottles of beer");
 
         print_str("Take one down and pass it around, ");
-        print_int(#bottle - 1);
+        print_int(bottle - 1);
         println_str(" bottles of beer on the wall");
 
-        bottle = #bottle - 1;
+        bottle = bottle - 1;
     }
 
     println_str("2 bottles of beer on the wall, 2 bottles of beer");

@@ -97,6 +97,7 @@ void VM_Execute(PiMachine *vm, int at) {
         case OP_SUB:  { int b = vm_pop_stack_32(vm), a = vm_pop_stack_32(vm); vm_push_stack_32(vm, a - b); break; }
         case OP_MULT: { int b = vm_pop_stack_32(vm), a = vm_pop_stack_32(vm); vm_push_stack_32(vm, a * b); break; }
         case OP_DIV:  { int b = vm_pop_stack_32(vm), a = vm_pop_stack_32(vm); vm_push_stack_32(vm, a / b); break; }
+        case OP_NEGATE: { vm_push_stack_32(vm, -vm_pop_stack_32(vm)); }
         }
     }
 }

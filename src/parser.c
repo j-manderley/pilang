@@ -48,11 +48,11 @@ void P_ParserCreate(PiParser *par, PiLexer *lexer, char *out) {
     par->out        = out;
     par->out_start  = out;
 
-    P_AddDef("read_int", 0);
-    P_AddDef("print_int", 1);
+    P_AddDef("read_i32", 0);
+    P_AddDef("print_i32", 1);
     P_AddDef("print_str", 2);
     P_AddDef("println_str", 3);
-    P_AddDef("println_int", 4);
+    P_AddDef("println_i32", 4);
 }
 
 void P_ParserDelete(PiParser *par) {
@@ -206,6 +206,15 @@ void P_ParserRevisit(PiParser *par) {
     }
 }
 
+int32_t P_GetIdentAddr(char *str) {
+    for (int i = 0; i < p_defs_n; i++) {
+        if (!strcmp(str, p_defs[i].str)) {
+            return p_defs[i].val;
+        }
+    }
+    // TODO: Error message
+}
+
 void P_ParserGetJustPrimary(PiParser *par) {
     PiToken *tok = P_ParserReadToken(par);
 
@@ -221,15 +230,9 @@ void P_ParserGetJustPrimary(PiParser *par) {
         return;
 
     case TOK_IDENT:
-        for (int i = 0; i < p_defs_n; i++) {
-            if (!strcmp(tok->str, p_defs[i].str)) {
-                P_ParserWrite8(par, OP_CONST);
-                P_ParserWrite32(par, p_defs[i].val);
-                return;
-            }
-        }
         P_ParserWrite8(par, OP_CONST);
-        P_ParserWrite32(par, -1); // TODO: Error message
+        P_ParserWrite32(par, P_GetIdentAddr(tok->str));
+        P_ParserWrite8(par, OP_LOAD);
         return;
 
     case TOK_LBRACE:
@@ -243,9 +246,25 @@ void P_ParserGetJustPrimary(PiParser *par) {
             P_ParserNewError(par, "')' expected");
             return;
         }
+    
     case TOK_DEREF:
         P_ParserGetJustPrimary(par);
         P_ParserWrite8(par, OP_LOAD);
+        return;
+    
+    case TOK_HASH:
+        tok = P_ParserReadToken(par);
+        if (tok->type != TOK_IDENT) {
+            P_ParserNewError(par, "ident expected");
+            return;
+        }
+        P_ParserWrite8(par, OP_CONST);
+        P_ParserWrite32(par, P_GetIdentAddr(tok->str));
+        return;
+
+    case TOK_MINUS:
+        P_ParserGetJustPrimary(par);
+        P_ParserWrite8(par, OP_NEGATE);
         return;
     }
 
@@ -260,8 +279,10 @@ void P_ParserGetPrimary(PiParser *par) {
 
     PiToken *tok = P_ParserReadToken(par);
     switch (tok->type) {
-    case TOK_LBRACE:
+    case TOK_LBRACE: // Function call
         {
+            if (*(par->out - 1) == OP_LOAD) par->out--;
+
             int cnt = 0;
             while (1) {
                 if (firsttime) {
@@ -312,7 +333,7 @@ PiMathExprDef mathexpr_tokens[] = {
 void P_ParserWrite8(PiParser *par, int8_t x) {
     *par->out = x;
 
-    //printf("At %d: %s\n", (par->out - par->out_start), opcode_strs[x]);
+    //printf("At %d: %s\n", (par->out - par->out_start), x < 0 ? "???" : opcode_strs[x]);
     par->out++;
 }
 
@@ -332,6 +353,8 @@ void P_ParserGetMathExpr(PiParser *par, int level) {
     PiToken *tok = P_ParserReadToken(par);
     while (tok->type == mathexpr_tokens[level].tok1 || tok->type == mathexpr_tokens[level].tok2) {
         int type = tok->type;
+
+        if (type == TOK_EQUAL && *(par->out - 1) == OP_LOAD) par->out--;
 
         P_ParserGetMathExpr(par, level + 1);
         P_ParserWrite8(par, (type == mathexpr_tokens[level].tok1) ?

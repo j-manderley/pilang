@@ -5,7 +5,7 @@
     x = read_int();
     y = read_int();
 
-    if (#x > #y) println_str("X > Y");
+    if (x > y) println_str("X > Y");
     else println_str("X <= Y");
 
     return;
