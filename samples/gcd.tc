@@ -1,0 +1,15 @@
+int a, b, tmp;
+
+print_str("Enter A and B\n> ");
+a = read();
+b = read();
+
+while (b) {
+	a = a % b;
+
+	tmp = a;
+	a = b;
+	b = tmp;
+}
+
+println(a);

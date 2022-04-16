@@ -1,0 +1,8 @@
+int x, y;
+
+print_str("Enter X and Y\n> ");
+x = read();
+y = read();
+
+if (x > y) println_str("X > Y");
+else println_str("X <= Y");

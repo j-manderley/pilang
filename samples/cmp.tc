@@ -1,0 +1,13 @@
+int a, b;
+
+print_str("Enter A and B\n> ");
+a = read();
+b = read();
+
+println_str("> >= < <= == !=");
+print(a > b);
+print(a >= b);
+print(a < b);
+print(a <= b);
+print(a == b);
+println(a != b);
