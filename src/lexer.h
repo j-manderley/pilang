@@ -1,5 +1,5 @@
-#ifndef PILANG_LEXER_H
-#define PILANG_LEXER_H
+#ifndef TOYC_LEXER_H
+#define TOYC_LEXER_H
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -45,13 +45,13 @@ enum {
 typedef struct {
     char *str;
     int tok_id;
-} PiKeywordDef;
+} TcKeywordDef;
 
 typedef struct {
     int type;
     int line, col;
     char *str; // most of the time it`s NULL
-} PiToken;
+} TcToken;
 
 typedef struct {
 	FILE *fptr;
@@ -63,20 +63,20 @@ typedef struct {
 
 	char buf[2];
     bool back;
-} PiLexer;
+} TcLexer;
 
-extern PiKeywordDef piKeywordDefs[];
-extern char *piTokenStrings[];
+extern TcKeywordDef tcKeywordDefs[];
+extern char *tcTokenStrings[];
 
 // Just sets str to NULL so no fancy memory leaks
-PiToken L_TokenNew(int type, int line, int col, char *str);
+TcToken L_TokenNew(int type, int line, int col, char *str);
 
 // Just free(str)
-void L_TokenDelete(PiToken *tok);
+void L_TokenDelete(TcToken *tok);
 
-void L_LexerCreate(PiLexer *lexer, FILE *fptr);
-void L_LexerDelete(PiLexer *lexer);
+void L_LexerCreate(TcLexer *lexer, FILE *fptr);
+void L_LexerDelete(TcLexer *lexer);
 
-PiToken L_LexerReadToken(PiLexer *lexer);
+TcToken L_LexerReadToken(TcLexer *lexer);
 
-#endif // PILANG_LEXER_H
+#endif // TOYC_LEXER_H

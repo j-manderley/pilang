@@ -1,5 +1,5 @@
-#ifndef PILANG_MACHINE_H
-#define PILANG_MACHINE_H
+#ifndef TOYC_MACHINE_H
+#define TOYC_MACHINE_H
 
 #define FOR_EACH_OPCODE(f) \
 	f(OP_EXTCALL) \
@@ -17,7 +17,8 @@
 	f(OP_ADD) f(OP_SUB) \
 	f(OP_MULT) f(OP_DIV) \
 	f(OP_MOD) \
-    f(OP_NEGATE)
+	f(OP_NEGATE) \
+	f(OP_LAST)
 
 enum {
     #define f(name) name,
@@ -41,10 +42,10 @@ typedef struct {
 
 	char *prog, *glob;
 	char *stack;
-} PiMachine;
+} TcMachine;
 
-void VM_Create(PiMachine *vm, int stack_sz, int glob_sz, char *prog);
-void VM_Destroy(PiMachine *vm);
-void VM_Execute(PiMachine *vm, int at);
+void VM_Create(TcMachine *vm, int stack_sz, int glob_sz, char *prog);
+void VM_Destroy(TcMachine *vm);
+void VM_Execute(TcMachine *vm, int at);
 
 #endif

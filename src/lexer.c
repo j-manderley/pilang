@@ -6,26 +6,27 @@
 
 #include "utils.h"
 
-char *piTokenStrings[] = {
+char *tcTokenStrings[] = {
 	#define f(name) #name,
 	FOR_EACH_TOKEN(f)
 	#undef f
 	"TOK_EOF"
 };
 
-void L_LexerCreate(PiLexer *lexer, FILE *fptr) {
+void L_LexerCreate(TcLexer *lexer, FILE *fptr) {
 	memset(lexer, 0, sizeof(*lexer));
+	lexer->line = 1;
 	lexer->fptr = fptr;
 }
 
 // TODO: delete this?????
-void L_LexerDelete(PiLexer *lexer) {
+void L_LexerDelete(TcLexer *lexer) {
 	// for now it is useless
 }
 
-PiToken L_TokenNew(int type, int line, int col, char *str) {
-	PiToken tok;
-    // printf("Tok: %s at %d:%d; %s\n", piTokenStrings[type], line, col, str);
+TcToken L_TokenNew(int type, int line, int col, char *str) {
+	TcToken tok;
+    // printf("Tok: %s at %d:%d; %s\n", tcTokenStrings[type], line, col, str);
 
 	tok.type = type;
 	tok.line = line;
@@ -35,19 +36,19 @@ PiToken L_TokenNew(int type, int line, int col, char *str) {
 	return tok;
 }
 
-void L_TokenDelete(PiToken *tok) {
+void L_TokenDelete(TcToken *tok) {
 	free(tok->str);
 }
 
-PiToken L_TokenError(PiLexer *lexer, char *msg) {
+TcToken L_TokenError(TcLexer *lexer, char *msg) {
 	return L_TokenNew(TOK_EOF, lexer->line, lexer->col, msg);
 }
 
-PiToken L_LexerCreateToken(PiLexer *lexer, int type, char *str) {
+TcToken L_LexerCreateToken(TcLexer *lexer, int type, char *str) {
 	return L_TokenNew(type, lexer->line, lexer->col - 1, str);
 }
 
-char L_LexerReadChar(PiLexer *lexer) {
+char L_LexerReadChar(TcLexer *lexer) {
 	char c = fgetc(lexer->fptr);
 
 	if (c == '\n') {
@@ -60,7 +61,7 @@ char L_LexerReadChar(PiLexer *lexer) {
 	return c;
 }
 
-void L_LexerStepBack(PiLexer *lexer) {
+void L_LexerStepBack(TcLexer *lexer) {
 	fseek(lexer->fptr, -1, SEEK_CUR);
 	char c = fgetc(lexer->fptr);
 	fseek(lexer->fptr, -1, SEEK_CUR);
@@ -73,8 +74,8 @@ void L_LexerStepBack(PiLexer *lexer) {
 	else lexer->col--;
 }
 
-PiToken L_LexerReadNumber(PiLexer *lexer) {
-	PiBuffer8 buf = U_BufferNew8(0);
+TcToken L_LexerReadNumber(TcLexer *lexer) {
+	TcBuffer8 buf = U_BufferNew8(0);
 
 	char c;
 	while (c = L_LexerReadChar(lexer), isdigit(c))
@@ -93,19 +94,19 @@ PiToken L_LexerReadNumber(PiLexer *lexer) {
 	return L_TokenNew(TOK_NUMBER, lexer->line, lexer->col, buf.ptr);
 }
 
-PiKeywordDef piKeywordDefs[] = {
+TcKeywordDef tcKeywordDefs[] = {
 	{ "while", TOK_WHILE },
-	{ "glob", TOK_GLOB },
+	{ /*"glob"*/ "int", TOK_GLOB },
 	{ "return", TOK_RETURN },
 	{ "if", TOK_IF },
 	{ "else", TOK_ELSE },
-	{ "deref", TOK_DEREF },
+	{ "deref", TOK_DEREF }
 };
 
-#define PI_KEYWORD_DEFS_TOTAL (sizeof(piKeywordDefs) / sizeof(*piKeywordDefs))
+#define TC_KEYWORD_DEFS_TOTAL (sizeof(tcKeywordDefs) / sizeof(*tcKeywordDefs))
 
-PiToken L_LexerReadIdent(PiLexer *lexer) {
-	PiBuffer8 buf = U_BufferNew8(1);
+TcToken L_LexerReadIdent(TcLexer *lexer) {
+	TcBuffer8 buf = U_BufferNew8(1);
 	buf.ptr[0] = L_LexerReadChar(lexer);
 
 	char c;
@@ -116,18 +117,18 @@ PiToken L_LexerReadIdent(PiLexer *lexer) {
 	U_BufferFit8(&buf);
 	L_LexerStepBack(lexer);
 
-	for (int i = 0; i < PI_KEYWORD_DEFS_TOTAL; i++) {
-		if (!strcmp(buf.ptr, piKeywordDefs[i].str)) {
+	for (int i = 0; i < TC_KEYWORD_DEFS_TOTAL; i++) {
+		if (!strcmp(buf.ptr, tcKeywordDefs[i].str)) {
 			U_BufferFree(&buf);
-			return L_TokenNew(piKeywordDefs[i].tok_id, lexer->line, lexer->col, NULL);
+			return L_TokenNew(tcKeywordDefs[i].tok_id, lexer->line, lexer->col, NULL);
 		}
 	}
 
 	return L_TokenNew(TOK_IDENT, lexer->line, lexer->col, buf.ptr);
 }
 
-PiToken L_LexerReadStrLiteral(PiLexer *lexer) {
-    PiBuffer8 buf = U_BufferNew8(0);
+TcToken L_LexerReadStrLiteral(TcLexer *lexer) {
+    TcBuffer8 buf = U_BufferNew8(0);
 
     while (1) {
         char c = L_LexerReadChar(lexer);
@@ -138,7 +139,7 @@ PiToken L_LexerReadStrLiteral(PiLexer *lexer) {
                 case 't':  U_BufferAppend8(&buf, '\t'); break;
                 case '\\': U_BufferAppend8(&buf, '\\'); break;
                 default:
-                return L_TokenError(lexer, strdup("Unknow escape sequence"));
+                return L_TokenError(lexer, strdup("Unknown escape sequence"));
             }
         }
         else if (c == '"') break;
@@ -154,9 +155,12 @@ char hex2char(int h) {
 	return (h < 10) ? ('0' + h) : ('A' + h - 10);
 }
 
-PiToken L_LexerReadToken(PiLexer *lexer) {
+TcToken L_LexerReadToken(TcLexer *lexer) {
 try_again:;
 	char c = L_LexerReadChar(lexer);
+
+	if (feof(lexer->fptr))
+		return L_LexerCreateToken(lexer, TOK_EOF, NULL);
 
 	switch (c) {
 		// Separators
@@ -189,8 +193,10 @@ try_again:;
 		return L_LexerCreateToken(lexer, TOK_ASTERISK, NULL);
 	case '/':
 	    c = L_LexerReadChar(lexer);
-	    if (c == '/')
-	        do c = L_LexerReadChar(lexer); while (c != '\n');
+	    if (c == '/') {
+	        do c = L_LexerReadChar(lexer); while (c != '\n' && !feof(lexer->fptr));
+			goto try_again;
+		}
 
 	    L_LexerStepBack(lexer);
 		return L_LexerCreateToken(lexer, TOK_SLASH, NULL);
@@ -214,9 +220,6 @@ try_again:;
 	case '\t':
 	case '\n':
 			goto try_again;
-
-	case EOF:
-		return L_LexerCreateToken(lexer, TOK_EOF, NULL);
 
 	case '"':
 	   return L_LexerReadStrLiteral(lexer);

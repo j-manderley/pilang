@@ -7,29 +7,21 @@
 #include "lexer.h"
 
 typedef struct {
-    char *str;
-    int val;
-} PiParserDef;
-
-typedef struct {
     int *where;
     char *what;
-} PiRevisitDef;
+} TcRevisitDef;
 
-PiParserDef *p_defs;
-int p_defs_n = 0;
 int p_memory_loc = 0;
 
-PiRevisitDef *p_revisits;
+TcRevisitDef *p_revisits;
 int p_revisits_n = 0;
 
-// TODO: move it into PiParser
-void P_AddDef(char *str, int val) {
-    p_defs_n++;
-    p_defs = realloc(p_defs, p_defs_n * sizeof(*p_defs));
+void P_ParserAddDef(TcParser *par, char *str, int val) {
+    par->defs_n++;
+    par->defs = realloc(par->defs, par->defs_n * sizeof(*par->defs));
 
-    p_defs[p_defs_n - 1].str = strdup(str);
-    p_defs[p_defs_n - 1].val = val;
+    par->defs[par->defs_n - 1].str = strdup(str);
+    par->defs[par->defs_n - 1].val = val;
 }
 
 void P_AddRevisit(int *where, char *what) {
@@ -40,27 +32,31 @@ void P_AddRevisit(int *where, char *what) {
     p_revisits[p_revisits_n - 1].what = strdup(what);
 }
 
-void P_ParserCreate(PiParser *par, PiLexer *lexer, char *out) {
+void P_ParserCreate(TcParser *par, TcLexer *lexer, char *out) {
     par->lexer      = lexer;
     par->buf[0]     = L_TokenNew(0, 0, 0, NULL);
     par->buf[1]     = L_TokenNew(0, 0, 0, NULL);
     par->loc        = 2;
     par->out        = out;
     par->out_start  = out;
+    par->ok         = 1;
+    par->defs       = NULL;
+    par->defs_n     = 0;
 
-    P_AddDef("read_i32", 0);
-    P_AddDef("print_i32", 1);
-    P_AddDef("print_str", 2);
-    P_AddDef("println_str", 3);
-    P_AddDef("println_i32", 4);
+    P_ParserAddDef(par, "read", 0);
+    P_ParserAddDef(par, "print", 1);
+    P_ParserAddDef(par, "print_str", 2);
+    P_ParserAddDef(par, "println_str", 3);
+    P_ParserAddDef(par, "println", 4);
+    P_ParserAddDef(par, "call", 5); // TODO: implement
 }
 
-void P_ParserDelete(PiParser *par) {
+void P_ParserDelete(TcParser *par) {
     L_TokenDelete(par->buf);
     L_TokenDelete(par->buf + 1);
 }
 
-PiToken *P_ParserReadToken(PiParser *par) {
+TcToken *P_ParserReadToken(TcParser *par) {
     if (par->loc == 2) {
         L_TokenDelete(&par->buf[0]);
         par->buf[0] = par->buf[1];
@@ -72,12 +68,12 @@ PiToken *P_ParserReadToken(PiParser *par) {
     return &par->buf[par->loc++];
 }
 
-void P_ParserStepBack(PiParser *par) {
+void P_ParserStepBack(TcParser *par) {
     par->loc = 1;
 }
 
-void P_ParserGetStatement(PiParser *par) {
-    PiToken *tok = P_ParserReadToken(par);
+void P_ParserGetStatement(TcParser *par) {
+    TcToken *tok = P_ParserReadToken(par);
 
     switch (tok->type) {
     case TOK_RETURN:
@@ -121,31 +117,38 @@ void P_ParserGetStatement(PiParser *par) {
             return;
         }
 
-    case TOK_LBRACKET:
-        tok = P_ParserReadToken(par);
-        if (tok->type == TOK_GLOB) {
-            while (1) {
-                tok = P_ParserReadToken(par);
-                if (tok->type != TOK_IDENT) {
-                    P_ParserNewError(par, "Ident expected");
-                    return;
-                }
-                P_AddDef(tok->str, p_memory_loc);
-                p_memory_loc += 4;
+    case TOK_GLOB:
+        while (1) {
+            tok = P_ParserReadToken(par);
+            if (tok->type != TOK_IDENT) {
+                P_ParserNewError(par, "Ident expected");
+                return;
+            }
+            P_ParserAddDef(par, tok->str, p_memory_loc);
+            p_memory_loc += 4;
 
-                tok = P_ParserReadToken(par);
-                if (tok->type == TOK_COMMA)
-                    continue;
-                else if (tok->type == TOK_SEMICOLON)
-                    break;
-                else {
-                    P_ParserNewError(par, "';' expected");
-                    return;
-                }
+            tok = P_ParserReadToken(par);
+            if (tok->type == TOK_EQUAL) {
+                P_ParserWrite8(par, OP_CONST);
+                P_ParserWrite32(par, p_memory_loc - 4);
+                P_ParserGetMathExpr(par, 0);
+                P_ParserWrite8(par, OP_STORE);
+            }
+            else P_ParserStepBack(par);
+
+            tok = P_ParserReadToken(par);
+            if (tok->type == TOK_COMMA)
+                continue;
+            else if (tok->type == TOK_SEMICOLON)
+                break;
+            else {
+                P_ParserNewError(par, "';' expected");
+                return;
             }
         }
-        else P_ParserStepBack(par);
+        return;
 
+    case TOK_LBRACKET:
         while (1) {
             tok = P_ParserReadToken(par);
             if (tok->type == TOK_RBRACKET)
@@ -184,39 +187,41 @@ void P_ParserGetStatement(PiParser *par) {
             *jmpz_ptr = (par->out - par->out_start);
             return;
         }
+
+    case TOK_EOF: // is it a dirty hack?
+        return;
     }
 
     P_ParserStepBack(par);
     P_ParserGetMathExpr(par, 0);
     tok = P_ParserReadToken(par);
-    if (tok->type != TOK_SEMICOLON) {
+    if (tok->type != TOK_SEMICOLON)
         P_ParserNewError(par, "';' expected");
-        return;
-    }
-
     return;
 }
 
-void P_ParserRevisit(PiParser *par) {
+void P_ParserRevisit(TcParser *par) {
     for (int i = 0; i < p_revisits_n; i++) {
-        *p_revisits[i].where = (par->out - par->out_start);
+        //printf("Revisited at %d: %s\n", (char*)p_revisits[i].where -  par->out_start, p_revisits[i].what);
+	*p_revisits[i].where = (par->out - par->out_start);
 
-        for (char *c = p_revisits[i].what; *c; c++) P_ParserWrite8(par, *c);
-        P_ParserWrite8(par, 0);
+        for (char *c = p_revisits[i].what; *c; c++) *(par->out++) = *c;
+        *(par->out++) = 0;
     }
 }
 
-int32_t P_GetIdentAddr(char *str) {
-    for (int i = 0; i < p_defs_n; i++) {
-        if (!strcmp(str, p_defs[i].str)) {
-            return p_defs[i].val;
+int32_t P_ParserGetIdentAddr(TcParser *par, char *str) {
+    for (int i = 0; i < par->defs_n; i++) {
+        if (!strcmp(str, par->defs[i].str)) {
+            return par->defs[i].val;
         }
     }
-    // TODO: Error message
+
+    P_ParserNewError(par, "Unknown ident");
 }
 
-void P_ParserGetJustPrimary(PiParser *par) {
-    PiToken *tok = P_ParserReadToken(par);
+void P_ParserGetJustPrimary(TcParser *par) {
+    TcToken *tok = P_ParserReadToken(par);
 
     switch (tok->type) {
     case TOK_NUMBER:
@@ -231,7 +236,7 @@ void P_ParserGetJustPrimary(PiParser *par) {
 
     case TOK_IDENT:
         P_ParserWrite8(par, OP_CONST);
-        P_ParserWrite32(par, P_GetIdentAddr(tok->str));
+        P_ParserWrite32(par, P_ParserGetIdentAddr(par, tok->str));
         P_ParserWrite8(par, OP_LOAD);
         return;
 
@@ -242,7 +247,6 @@ void P_ParserGetJustPrimary(PiParser *par) {
         if (tok->type == TOK_RBRACE)
             return;
         else {
-            P_ParserStepBack(par);
             P_ParserNewError(par, "')' expected");
             return;
         }
@@ -259,7 +263,7 @@ void P_ParserGetJustPrimary(PiParser *par) {
             return;
         }
         P_ParserWrite8(par, OP_CONST);
-        P_ParserWrite32(par, P_GetIdentAddr(tok->str));
+        P_ParserWrite32(par, P_ParserGetIdentAddr(par, tok->str));
         return;
 
     case TOK_MINUS:
@@ -269,15 +273,14 @@ void P_ParserGetJustPrimary(PiParser *par) {
     }
 
     P_ParserNewError(par, "Unexpected token");
-    P_ParserStepBack(par);
     return;
 }
 
-void P_ParserGetPrimary(PiParser *par) {
+void P_ParserGetPrimary(TcParser *par) {
     P_ParserGetJustPrimary(par);
     int firsttime = 1;
 
-    PiToken *tok = P_ParserReadToken(par);
+    TcToken *tok = P_ParserReadToken(par);
     switch (tok->type) {
     case TOK_LBRACE: // Function call
         {
@@ -315,10 +318,9 @@ void P_ParserGetPrimary(PiParser *par) {
 
 typedef struct {
     int tok1, tok2, op1, op2;
-} PiMathExprDef;
+} TcMathExprDef;
 
-// TODO: make expr levels with dYnAmIc size
-PiMathExprDef mathexpr_tokens[] = {
+TcMathExprDef mathexpr_tokens[] = {
     { TOK_EQUAL, TOK_EQUAL, OP_STORE, OP_STORE },
     { TOK_CMP_G, TOK_CMP_GE, OP_CMP_G, OP_CMP_GE },
     { TOK_CMP_EQ, TOK_CMP_NE, OP_CMP_EQ, OP_CMP_NE },
@@ -330,27 +332,27 @@ PiMathExprDef mathexpr_tokens[] = {
 
 #define MATHEXPR_TOKENS_TOTAL (sizeof(mathexpr_tokens) / sizeof(*mathexpr_tokens))
 
-void P_ParserWrite8(PiParser *par, int8_t x) {
+void P_ParserWrite8(TcParser *par, int8_t x) {
     *par->out = x;
 
-    //printf("At %d: %s\n", (par->out - par->out_start), x < 0 ? "???" : opcode_strs[x]);
+    // printf("At %d: %s\n", (par->out - par->out_start), x < 0 ? "???" : opcode_strs[x]);
     par->out++;
 }
 
-void P_ParserWrite32(PiParser *par, int32_t x) {
+void P_ParserWrite32(TcParser *par, int32_t x) {
     *(int32_t*)par->out = x;
 
-    //printf("At %d: %d\n", (par->out - par->out_start), x);
+    // printf("At %d: %d\n", (par->out - par->out_start), x);
     par->out += 4;
 }
 
-void P_ParserGetMathExpr(PiParser *par, int level) {
+void P_ParserGetMathExpr(TcParser *par, int level) {
     if (level == MATHEXPR_TOKENS_TOTAL)
         return P_ParserGetPrimary(par);
 
     P_ParserGetMathExpr(par, level + 1);
 
-    PiToken *tok = P_ParserReadToken(par);
+    TcToken *tok = P_ParserReadToken(par);
     while (tok->type == mathexpr_tokens[level].tok1 || tok->type == mathexpr_tokens[level].tok2) {
         int type = tok->type;
 
@@ -367,7 +369,8 @@ void P_ParserGetMathExpr(PiParser *par, int level) {
     P_ParserStepBack(par);
 }
 
-void P_ParserNewError(PiParser *par, char *msg) {
+void P_ParserNewError(TcParser *par, char *msg) {
     // printf("Error at %d:%d - %s.\n", par->buf[0].line, par->buf[0].col, msg);
-    printf("Error at %d:%d - %s. | TOK = %s\n", par->buf[0].line, par->buf[0].col, msg, piTokenStrings[par->buf[par->loc - 1].type] );
+    printf("Error at %d:%d - %s. | TOK = %s\n", par->buf[0].line, par->buf[0].col, msg, tcTokenStrings[par->buf[par->loc - 1].type] );
+    par->ok = 0;
 }

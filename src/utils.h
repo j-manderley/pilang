@@ -1,5 +1,5 @@
-#ifndef PILANG_UTILS_H
-#define PILANG_UTILS_H
+#ifndef TOYC_UTILS_H
+#define TOYC_UTILS_H
 
 #include <stdint.h>
 
@@ -7,22 +7,22 @@ typedef struct {
 	void *ptr;
 	int size;
 	int capacity;
-} PiBuffer;
+} TcBuffer;
 
-#define PI_DECL_BUFFER(suffix, type) \
+#define TC_DECL_BUFFER(suffix, type) \
 	typedef struct { \
 		type *ptr; \
 		int size; \
 		int capacity; \
-	} PiBuffer##suffix; \
+	} TcBuffer##suffix; \
 	 \
-	PiBuffer##suffix U_BufferNew##suffix(int size); \
-	void U_BufferFit##suffix(PiBuffer##suffix *buf); \
-	void U_BufferAppend##suffix(PiBuffer##suffix *buf, int c);
+	TcBuffer##suffix U_BufferNew##suffix(int size); \
+	void U_BufferFit##suffix(TcBuffer##suffix *buf); \
+	void U_BufferAppend##suffix(TcBuffer##suffix *buf, int c);
 
-#define PI_IMPL_BUFFER(suffix, type) \
-	PiBuffer##suffix U_BufferNew##suffix(int size) { \
-		PiBuffer##suffix buf; \
+#define TC_IMPL_BUFFER(suffix, type) \
+	TcBuffer##suffix U_BufferNew##suffix(int size) { \
+		TcBuffer##suffix buf; \
 		\
 		buf.ptr = malloc(size * sizeof(*buf.ptr)); \
 		buf.size = size; \
@@ -31,12 +31,12 @@ typedef struct {
 		return buf; \
 	} \
 	\
-	void U_BufferFit##suffix(PiBuffer##suffix *buf) { \
+	void U_BufferFit##suffix(TcBuffer##suffix *buf) { \
 		buf->capacity = buf->size; \
 		buf->ptr = realloc(buf->ptr, buf->capacity * sizeof(*buf->ptr)); \
 	} \
 	\
-	void U_BufferAppend##suffix(PiBuffer##suffix *buf, int c) { \
+	void U_BufferAppend##suffix(TcBuffer##suffix *buf, int c) { \
 		if (buf->capacity == 0) buf->capacity = 1; \
 		\
 		while (buf->size >= buf->capacity) \
@@ -47,9 +47,9 @@ typedef struct {
 		buf->size++; \
 	}
 
-PI_DECL_BUFFER(8, char)
-PI_DECL_BUFFER(32, int)
+TC_DECL_BUFFER(8, char)
+TC_DECL_BUFFER(32, int)
 
 void U_BufferFree(void *bufptr);
 
-#endif // PILANG_UTILS_H
+#endif // TOYC_UTILS_H

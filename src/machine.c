@@ -8,13 +8,13 @@ extern const char *opcode_strs[] = {
     "OP_RETURN"
 };
 
-void VM_Create(PiMachine *vm, int stack_sz, int glob_sz, char *prog) {
+void VM_Create(TcMachine *vm, int stack_sz, int glob_sz, char *prog) {
     vm->stack = malloc(stack_sz);
     vm->glob  = malloc(glob_sz);
     vm->prog  = prog;
 }
 
-void VM_Destroy(PiMachine *vm) {
+void VM_Destroy(TcMachine *vm) {
     free(vm->stack);
     free(vm->glob);
 
@@ -23,34 +23,36 @@ void VM_Destroy(PiMachine *vm) {
     vm->prog  = NULL;
 }
 
-int vm_read_prog_32(PiMachine *vm) {
+int vm_read_prog_32(TcMachine *vm) {
     int res = *(int*)(vm->prog + vm->pc);
     vm->pc += 4;
     return res;
 }
 
-char vm_read_prog_8(PiMachine *vm) {
+char vm_read_prog_8(TcMachine *vm) {
     return vm->prog[vm->pc++];
 }
 
-void vm_push_stack_32(PiMachine *vm, int x) {
+void vm_push_stack_32(TcMachine *vm, int x) {
+    // printf("pushed32 %d\n", x);
     *((int*)vm->sp) = x;
     vm->sp += 4;
 }
 
-int vm_pop_stack_32(PiMachine *vm) {
+int vm_pop_stack_32(TcMachine *vm) {
     vm->sp -= 4;
+    // printf("popped32 %d\n", *((int*)vm->sp));
     return *((int*)vm->sp);
 }
 
-void VM_Execute(PiMachine *vm, int at) {
+void VM_Execute(TcMachine *vm, int at) {
     vm->pc = at;
     vm->sp = vm->stack;
 
     while (1) {
         char op = vm_read_prog_8(vm);
 
-        //printf("pc = %d; sp = %d; %s\n", vm->pc - 1, (vm->sp - vm->stack), opcode_strs[op]);
+        // printf("pc = %d; sp = %d; %s\n", vm->pc - 1, (vm->sp - vm->stack), opcode_strs[op]);
 
         switch (op) {
         case OP_RETURN: return;
@@ -70,6 +72,7 @@ void VM_Execute(PiMachine *vm, int at) {
             case 2: printf("%s", &vm->prog[*(int*)(vm->sp + 4)]); break;
             case 3: printf("%s\n", &vm->prog[*(int*)(vm->sp + 4)]); break;
             case 4: printf("%d\n", *(int*)(vm->sp + 4)); break;
+            case 5: system(&vm->prog[*(int*)(vm->sp + 4)]); break; 
             }
 
             break;

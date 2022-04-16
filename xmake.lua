@@ -1,6 +1,7 @@
 add_rules("mode.debug", "mode.release")
+set_toolchains("gcc");
 
-target("pilang")
+target("toyc")
 	set_kind("binary")
 	add_files("src/*.c")
 	add_includedirs("src")
