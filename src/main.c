@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
     SetConsoleCP(1251);
     SetConsoleOutputCP(1251);
 #endif
-    
+
     if (argc != 2) {
         printf("Specify filename\n");
         return 0;

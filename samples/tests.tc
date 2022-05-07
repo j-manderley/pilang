@@ -1,13 +1,15 @@
-int t1 = "xmake r -w. toyc samples/beer.tc",
-    t2 = "xmake r -w. toyc samples/gcd.tc",
-    t3 = "xmake r -w. toyc samples/if.tc",
-    t4 = "xmake r -w. toyc samples/rus.tc";
+int t1 = "toyc samples/beer.tc",
+    t2 = "toyc samples/gcd.tc",
+    t3 = "toyc samples/if.tc",
+    t4 = "toyc samples/rus.tc";
 int n = 0;
 
 while (n < 4) {
+    int cmd = deref(#t1 + n*4);
+
     print_str("--- EXECUTING: ");
-    println_str(deref(#t1 + n*4));
-    call(deref(#t1 + n*4));
+    println_str(cmd);
+    call(cmd);
 
     n = n + 1;
 }
